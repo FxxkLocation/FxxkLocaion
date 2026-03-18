@@ -1,0 +1,2 @@
+# FxxkLocaion
+绕过Fakelocation Pro验证获取永久Pro，且绕过黑名单验证并添加GNSS Hook精准定位使其部分严格检测GPS应用接受模拟定位结果的Lsposed模块
