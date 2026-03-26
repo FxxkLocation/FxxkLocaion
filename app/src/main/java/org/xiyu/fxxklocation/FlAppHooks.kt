@@ -28,6 +28,7 @@ internal fun ModuleMain.performFlHooks(cl: ClassLoader) {
     safeHook("XpModeEnable") { hookXpModeEnable(cl) }
     safeHook("Mode0Binder") { hookMode0Binder(cl) }
     safeHook("AgreementDialog") { hookAgreementDialog(cl) }
+    safeHook("UpdateDialog") { hookUpdateDialog(cl) }
     log("[FL] All hooks installed (v41: proactive service_fl_ml + compat fixes + SELinux + agreement + step + enforcement + mock flag strip + Mode0Binder)")
 
     triggerJedDexLoading(cl)
@@ -63,6 +64,38 @@ private fun ModuleMain.hookAgreementDialog(cl: ClassLoader) {
         }
     })
     log("[FL] AgreementDialog: hooked ${targetMethod.name}(Context)")
+}
+
+// ==================== Update Dialog Block ====================
+private fun ModuleMain.hookUpdateDialog(cl: ClassLoader) {
+    // TODO: 请将 "com.lerist.common.version.C11159" 替换为实际的更新弹窗类名，如果也是某个混淆名称比如 "gc3"，请替换。
+    val updateDialogClass = try {
+        XposedHelpers.findClass("com.lerist.common.version.C11159", cl)
+    } catch (e: Exception) {
+        log("[FL] UpdateDialog: class not found")
+        return
+    }
+    
+    val targetMethod = updateDialogClass.declaredMethods.firstOrNull { m ->
+        Modifier.isStatic(m.modifiers)
+            && m.returnType == Void.TYPE
+            && m.parameterTypes.size == 1
+            && m.parameterTypes[0] == Context::class.java
+    }
+    
+    if (targetMethod == null) {
+        log("[FL] UpdateDialog: no matching static void(Context) in target class")
+        return
+    }
+    
+    XposedBridge.hookMethod(targetMethod, object : XC_MethodHook() {
+        override fun beforeHookedMethod(param: MethodHookParam) {
+            // 直接将结果置空，使得原本显示弹窗的方法直接返回，达到强制关闭/不显示的效果
+            param.result = null
+            log("[FL] Update dialog blocked")
+        }
+    })
+    log("[FL] UpdateDialog: hooked ${targetMethod.name}(Context)")
 }
 
 // ==================== XP Mode Enable (ap2 + C5039) ====================
