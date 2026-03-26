@@ -540,8 +540,10 @@ private fun ModuleMain.hookBlacklistTransport(cl: ClassLoader) {
             XposedBridge.hookMethod(m, object : XC_MethodHook() {
                 override fun beforeHookedMethod(param: MethodHookParam) {
                     val orig = param.args[0] as? List<*>
-                    param.args[0] = ArrayList(DUMMY_BLACKLIST)
-                    log("[FL] TRANSPORT-svc: ${(param.method as java.lang.reflect.Method).name} -> dummy (was ${orig?.size ?: 0})")
+                    val strList = orig?.mapNotNull { it as? String }
+                    val filtered = filterBlacklist(strList)
+                    param.args[0] = ArrayList(filtered)
+                    log("[FL] TRANSPORT-svc: ${(param.method as java.lang.reflect.Method).name} -> filtered (was ${orig?.size ?: 0} -> ${filtered.size})")
                 }
             })
             svcHooked++
@@ -661,8 +663,12 @@ private fun ModuleMain.hookDisabledLists(cl: ClassLoader) {
         if (List::class.java.isAssignableFrom(m.returnType)) {
             m.isAccessible = true
             XposedBridge.hookMethod(m, object : XC_MethodHook() {
-                override fun beforeHookedMethod(param: MethodHookParam) {
-                    param.result = ArrayList<String>()
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    val orig = param.result as? List<*>
+                    if (orig != null) {
+                        val strList = orig.mapNotNull { it as? String }
+                        param.result = ArrayList(filterBlacklist(strList))
+                    }
                 }
             })
             hooked++

@@ -36,6 +36,23 @@ internal const val FL_XP_DESCRIPTOR   = "com.lerist.aidl.fakelocation.IXPServer"
 
 internal val DUMMY_BLACKLIST: List<String> = List(15) { "x${it}.nonexistent.fake.app" }
 
+internal fun filterBlacklist(original: List<String>?): List<String> {
+    val list = ArrayList(original ?: DUMMY_BLACKLIST)
+    try {
+        val f = java.io.File("/data/local/tmp/fl_whitelist.txt")
+        if (f.exists() && f.canRead()) {
+            val whitelisted = f.readLines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+            if (whitelisted.isNotEmpty()) {
+                list.removeAll(whitelisted)
+                log("Removed ${whitelisted.size} packages from FL blacklist based on /data/local/tmp/fl_whitelist.txt")
+            }
+        }
+    } catch (e: Exception) {
+        log("filterBlacklist read error: $e")
+    }
+    return list
+}
+
 internal fun log(msg: String) {
     Log.d(TAG, msg)
     XposedBridge.log("$TAG: $msg")

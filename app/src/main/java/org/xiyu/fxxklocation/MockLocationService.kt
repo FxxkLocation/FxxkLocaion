@@ -28,6 +28,9 @@ internal class MockLocationBinder(
     @Volatile var enforcementFlag = false
     @Volatile var enforcementThread: Thread? = null
 
+    private var localBlacklist = ArrayList<String>()
+    private var cloudBlacklist = ArrayList<String>()
+
     // Step simulation state
     @Volatile var stepSimActive = false
     @Volatile var stepSpeed: Float = 1.5f    // meters/second
@@ -70,8 +73,8 @@ internal class MockLocationBinder(
                 }
                 7 -> { loopInterval = data.readLong(); r.writeNoException() }                      // setDelay
                 8 -> { r.writeNoException(); r.writeLong(loopInterval) }                            // getInterval
-                9 -> { data.createStringArrayList(); r.writeNoException() }                         // setLocalBlacklist
-                10 -> { r.writeNoException(); r.writeStringList(ArrayList(DUMMY_BLACKLIST)) }       // getLocalBlacklist
+                9 -> { localBlacklist = data.createStringArrayList() ?: ArrayList(); r.writeNoException() } // setLocalBlacklist
+                10 -> { r.writeNoException(); r.writeStringList(ArrayList(filterBlacklist(localBlacklist))) } // getLocalBlacklist
                 11 -> {                                                                             // startStepSim
                     stepSimActive = true
                     stepStartTime = System.currentTimeMillis()
@@ -106,8 +109,8 @@ internal class MockLocationBinder(
                 29 -> { r.writeNoException(); r.writeInt(-1) }                                      // getSubInfos → null
                 30 -> { data.readInt(); r.writeNoException() }                                      // setEnabled4
                 31 -> { r.writeNoException(); r.writeInt(0) }                                       // isFeature1
-                32 -> { data.createStringArrayList(); r.writeNoException() }                        // setCloudBlacklist
-                33 -> { r.writeNoException(); r.writeStringList(ArrayList(DUMMY_BLACKLIST)) }       // getCloudBlacklist
+                32 -> { cloudBlacklist = data.createStringArrayList() ?: ArrayList(); r.writeNoException() } // setCloudBlacklist
+                33 -> { r.writeNoException(); r.writeStringList(ArrayList(filterBlacklist(cloudBlacklist))) } // getCloudBlacklist
                 34 -> {                                                                             // setTiming (step baseline)
                     stepBaseline = data.readLong()
                     log("[SYS-ML] step baseline set: $stepBaseline")

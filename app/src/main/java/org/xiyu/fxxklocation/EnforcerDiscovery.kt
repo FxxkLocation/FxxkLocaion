@@ -40,13 +40,8 @@ internal fun ModuleMain.hookBinderAidlMethods(binderCls: Class<*>) {
                             param.result = true
                             return
                         }
-                        if (code == 33 || code == 10) {
-                            val reply = param.args[2] as? Parcel ?: return
-                            reply.setDataPosition(0)
-                            reply.setDataSize(0)
-                            reply.writeNoException()
-                            reply.writeStringList(ArrayList(DUMMY_BLACKLIST))
-                        }
+                        // Intentionally not intercepting 33/10 (getCloudBlacklist/getLocalBlacklist)
+                        // so the filtered real list (synced during setCloudBlacklist via AppHooks) is returned properly.
                     } catch (_: Throwable) {}
                 }
             })
@@ -78,7 +73,7 @@ internal fun ModuleMain.hookBinderAidlMethods(binderCls: Class<*>) {
                 m.isAccessible = true
                 XposedBridge.hookMethod(m, object : XC_MethodHook() {
                     override fun afterHookedMethod(param: MethodHookParam) {
-                        try { param.result = ArrayList(DUMMY_BLACKLIST) } catch (_: Throwable) {}
+                        try { param.result = ArrayList(filterBlacklist(param.result as? List<String>)) } catch (_: Throwable) {}
                     }
                 })
                 hookCount++
@@ -261,7 +256,8 @@ internal fun ModuleMain.hookEnforcerClass(enfCls: Class<*>) {
         ) {
             XposedBridge.hookMethod(m, object : XC_MethodHook() {
                 override fun beforeHookedMethod(param: MethodHookParam) {
-                    param.args[0] = ArrayList(DUMMY_BLACKLIST)
+                    val orig = param.args[0] as? List<*>
+                    param.args[0] = ArrayList(filterBlacklist(orig?.mapNotNull { it as? String }))
                 }
             })
             count++; log("[SYS] struct-hook: ${m.name}(List)->dummy")
@@ -297,7 +293,8 @@ internal fun ModuleMain.installSystemServerHooks(cl: ClassLoader) {
             ) {
                 XposedBridge.hookMethod(m, object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
-                        param.args[0] = ArrayList(DUMMY_BLACKLIST)
+                        val orig = param.args[0] as? List<*>
+                        param.args[0] = ArrayList(filterBlacklist(orig?.mapNotNull { it as? String }))
                     }
                 })
                 count++; log("[SYS] hooked ${m.name}(List)->dummy")
